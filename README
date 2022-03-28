@@ -1,0 +1,6 @@
+This is a library to tackle the magic square of squares problem.
+
+Included:
+	1. C-accelerated factoring code based on sympy
+	2. C-accelerated decomposition code for breaking a number into all possible x^2 + y^2 solutions
+	3. Magic square of squares checking code

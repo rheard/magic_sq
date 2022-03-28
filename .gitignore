@@ -1,0 +1,8 @@
+*.log
+*.pyproj
+build*
+x64*
+*.egg-info
+*__pycache__*
+magic_sq/*.pyd
+.vs*
