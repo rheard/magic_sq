@@ -152,7 +152,7 @@ def test(i, cpp=True):
                 ):
             # We're going to compute the central value from the top row
             target_val = out_a**2 + out_b**2 + out_c**2
-            out_e_sq = target_val-(out_d**2 + out_f**2)  # central value, squared
+            out_e_sq = target_val - i  # central value, squared
             if out_e_sq <= 0:
                 continue  # e is less than 1 (not valid)
             if (out_g**2 + out_h**2 + out_i**2) != target_val:
