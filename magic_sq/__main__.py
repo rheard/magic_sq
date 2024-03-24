@@ -9,11 +9,100 @@ from multiprocessing import Pool
 logger = logging.getLogger(__name__)
 
 
-from . import test
+try:
+    from . import test
+    from .generate_factors import GenerateFactorings
+except ImportError:
+    from magic_sq import test
+    from magic_sq.generate_factors import GenerateFactorings
 
 
+class GenerateFactoringsMgSqSq(GenerateFactorings):
+    """
+    A modified version of GenerateFactorings.
+        Skips all factorings that will not lead to at least 4 x**2+y**2 combinations,
+        and are not relevant to the problem.
+    """
 
-def main(n=None, start=2, multiprocessing=True):
+    def __init__(self):
+        super().__init__()
+
+        self.two_max = 1
+        self.P = dict()
+        self.Q = dict()
+
+    def next(self):
+        base, i, val = super().next()
+
+        if base == 2:
+            self.two_max = i
+            t = '2'
+        elif base % 4 == 1:
+            self.P[base] = i
+            t = 'P'
+        else:
+            self.Q[base] = i
+            t = 'Q'
+
+        return base, i, val, t
+
+    def _get_numbers(self, two_max, p_factorings_max, q_factorings_max):
+
+        if two_max:
+            target_key = 2
+            target_key_max = two_max
+            for combo in self._get_numbers(0, p_factorings_max, q_factorings_max):
+                for e in range(0, target_key_max + 1):
+                    yield combo | {target_key: e}
+
+        elif p_factorings_max:
+            target_key = max(p_factorings_max)
+            target_key_max = p_factorings_max[target_key]
+            p_factorings_max = {k: v for k, v in p_factorings_max.items() if k != target_key}
+
+            for combo in self._get_numbers(two_max, p_factorings_max, q_factorings_max):
+                for e in range(0, target_key_max + 1):
+                    yield combo | {target_key: e}
+
+        elif q_factorings_max:
+            target_key = max(q_factorings_max)
+            target_key_max = q_factorings_max[target_key]
+            q_factorings_max = {k: v for k, v in q_factorings_max.items() if k != target_key}
+
+            for combo in self._get_numbers(two_max, p_factorings_max, q_factorings_max):
+                for e in range(0, target_key_max + 1, 2):
+                    yield combo | {target_key: e}
+
+        else:
+            yield dict()
+            return
+
+    def get_numbers(self, target_P, target_Q, cur_base, cur_i):
+        # We have the value for our current base, so that is not needed
+        for combo in self._get_numbers(self.two_max if cur_base != 2 else 0, target_P, target_Q):
+            yield combo | {cur_base: cur_i}
+
+    def get_factorings(self):
+        while True:
+            cur_base, cur_i, cur_val, t = self.next()
+
+            if t == 'Q' and cur_i % 2 == 1:
+                continue
+
+            target_P = self.P if t != 'P' else {k: v for k, v in self.P.items() if k != cur_base}
+            target_Q = self.Q if t != 'Q' else {k: v for k, v in self.Q.items() if k != cur_base}
+            for combo in self.get_numbers(target_P, target_Q, cur_base, cur_i):
+                combo = {k: v for k, v in combo.items() if v != 0}
+                if combo:
+                    yield combo
+
+
+def multithreaded_test(i):
+    """Wrapper for ThreadPool"""
+    return test(i, limited_checks=True)
+
+
+def main(n=None, start=2, multiprocessing=True, targeted_generation=False):
     """
     Search for a magic square of squares (bimagic square of order 3)
 
@@ -70,24 +159,39 @@ def main(n=None, start=2, multiprocessing=True):
 
     I have only added a check for the bottom row however, and to date,
         no potential solutions have made it passed that point...
-
-    Hooray: With the above python methods, the datastore is no longer needed! The memory requirements are solved, 
-        AND I can make this multiprocessing AND it gets done in 0.5s what took an entire night before!!
     """
-    # dual_sum -> unique_pairs
-    iterator = count(start) if n is None else range(start, n)
+    if targeted_generation:
+        iterator = GenerateFactoringsMgSqSq()
+        log_step = 10**2
+    else:
+        iterator = count(start) if n is None else range(start, n)
+        log_step = 10**5
 
     if multiprocessing:
         with Pool() as tp:
-            for i, _ in enumerate(tp.imap(test, iterator, chunksize=10**4), start=start):
-                if i % 10**5 == 0:
-                    logger.info('Passing %s', i)
-    else:
-        for i in iterator:
-            test(i)
+            for i, ans in enumerate(tp.imap(multithreaded_test, iterator, chunksize=10**4), start=start):
+                if ans:
+                    logger.critical('ANSWER: %s', ans)
+                    break
 
-            if i % 10**5 == 0:
+                if i % log_step == 0:
+                    logger.info('Passing %s', i)
+
+                if targeted_generation and n and i == n:
+                    break
+    else:
+        for i, ans in enumerate(iterator):
+            test(i, limited_checks=True)
+
+            if ans:
+                logger.critical('ANSWER: %s', ans)
+                break
+
+            if i % log_step == 0:
                 logger.info('Passing %s', i)
+
+            if targeted_generation and n and i == n:
+                break
 
 
 if __name__ == '__main__':
@@ -96,6 +200,10 @@ if __name__ == '__main__':
     parser.add_argument('--start', type=int, default=2, 
                         help="The start point. Be VERY careful to start well below the last end point, "
                              "or a solution may be missed.")
+    parser.add_argument('--targeted', action='store_true', default=False,
+                        help="Generate factorizations instead of factoring all numbers. "
+                             "This is faster, and eventually all numbers should be generated... "
+                             "but vastly out of order")
 
     args = parser.parse_args()
 
@@ -111,6 +219,6 @@ if __name__ == '__main__':
 
     logger.info('Starting with end=%s at start=%s', args.end, args.start)
     start_time = time.time()
-    main(args.end, args.start)
+    main(args.end, args.start, targeted_generation=args.targeted)
     end_time = time.time()
     logger.info('Took %s', end_time - start_time)

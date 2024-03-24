@@ -1,10 +1,10 @@
 import math
 
+from functools import lru_cache
+
 from itertools import combinations, product
 
 from sympy.ntheory import factorint
-
-from magic_sq.decomposing import decompose_number as cppdecompose_number
 
 
 def euclids_algorithm(a, b, c):
@@ -22,11 +22,13 @@ def euclids_algorithm(a, b, c):
         first = r
 
 
+@lru_cache
 def decompose_prime(p):
     """
     Decompose a prime number into a**2 + b**2
 
-    There will only be 1 solution for primes.
+    There will be at most 1 solution for primes, but only if the prime is equal 1 mod 4 according
+        to Fermat's theorem on sums of two squares.
 
     This is based on the algorithm described by Stan Wagon (1990),
         based on work by Serret and Hermite (1848), and Cornacchia (1908)
@@ -34,6 +36,9 @@ def decompose_prime(p):
     Returns:
         tuple<int, int>: a and b
     """
+    if p % 4 != 1:
+        raise ValueError(f'Could not decompose {p!r}')
+
     p_sqrt = math.isqrt(p)
     for a in range(1, p):  # a must be co-prime to p
         if pow(a, (p - 1) // 2, p) == p - 1:
@@ -42,27 +47,33 @@ def decompose_prime(p):
             res = euclids_algorithm(p, pow(a, (p - 1) // 4, p), p_sqrt)
             if res:
                 return res
-    raise ValueError(f'Could not decompose {p!r}')
 
 
-def decompose_number(n, check_count=None):
+def decompose_number(n, check_count=None, limited_checks=False):
     """
     Decompose any number into all the possible x**2 + y**2 solutions
 
     There may be many solutions. 
 
     Args:
-        n (int): The number to decompose.
+        n (int, dict): The number to decompose. Can be an integer which will be factored,
+            or the already factored number.
         check_count (int): If provided, and it is predicted that a number will have fewer than this many solutions,
             that number is skipped and an empty list is returned instead.
+        limited_checks (bool): Only run limited checks. Should only be used with prepared input
+            or false positive will appear.
 
     Returns:
         list<tuple<int, int)>>: All unique solutions (x, y)
     """
 
-    # Step 1: Factor n. This is the most time consuming step, especially on larger numbers
-    factors = factorint(n)
-    
+    # Step 1: Factor n. This is the most time consuming step, especially on larger numbers. Avoid if possible
+    if isinstance(n, dict):
+        factors = n
+    else:
+        factors = factorint(n)
+
+    # Look for shortcuts
     if len(factors) == 1 and sum(factors.values()) == 1:
         p = next(iter(factors))
         if check_count and check_count > 1:
@@ -82,18 +93,22 @@ def decompose_number(n, check_count=None):
         elif p_mod_4 == 3:
             p_3[p] = k
 
-    if any(k % 2 == 1 for k in p_3.values()) or not p_1:
+    if not limited_checks and any(k % 2 == 1 for k in p_3.values()):
         # There is a prime == 3 mod 4 and at least one has an odd exponent, so no results
-        #   OR there aren't any primes = 1 mod 4, in which case, escape to no results
+        return set()
+
+    if not p_1:
+        # There aren't any primes = 1 mod 4, in which case, escape to no results
         return set()
 
     if check_count and math.prod(f + 1 for f in p_1.values()) < check_count:
         # Provided a check_count and the expected number of results is less than that
-        #   expected number = (f_1 + 1) * (f_2 + 1) * ... where f is an exponent of a prime = 1 mod 4 in the factorization
+        #   expected number = (f_1 + 1) * (f_2 + 1) * ...
+        #   where f is an exponent of a prime = 1 mod 4 in the factorization
         return set()
 
     two_power = factors.get(2, 0)  # 2 is a special case. Get that exponent
-    factors = p_1  # Convience. These are the only factors we care about going forward...
+    factors = p_1  # Convenience. These are the only factors we care about going forward...
 
     # Handle the primes == 3 mod 4: For each one p^k, take -p*j ** max(k // 2, 1), 
     #   then multiply that all together
@@ -124,39 +139,48 @@ def decompose_number(n, check_count=None):
         # TODO: Convert to gmpy2 or mpmath? Which use extended precision complex numbers
         sol = tuple(sorted((int(abs(total.real)), int(abs(total.imag)))))
         if sol[0] == sol[1]:
-            continue  # Skip symmetirical solutions with repeat numbers (a**2 + a**2)
+            continue  # Skip symmetrical solutions with repeat numbers (a**2 + a**2)
         if any(x == 0 for x in sol):
             continue  # Skip solutions containing 0
         found.add(sol)
     return found
 
 
-def test(i, cpp=True):
+def test(i, show_puzzles=False, limited_checks=False):
     """Test all values of a**2 + b**2 = i"""
-    if cpp:
-        solutions = cppdecompose_number(i, 4)
-    else:
-        solutions = decompose_number(i, 4)
+    solutions = decompose_number(i, 4, limited_checks)
 
-    # Now go through all the combinations of the new pair with 3 other co-equal pairs
+    if isinstance(i, dict) and solutions:
+        i = math.prod(k**v for k, v in i.items())
+
     for (a1, a2), (b1, b2), (c1, c2), (d1, d2) in combinations(solutions, 4):
-        # FOR NOW I'm going to act as if the center was symmetrical. We can check more symmetry later when we start check the left/right columns
+        # FOR NOW I'm going to act as if the center was symmetrical.
+        #   We can check more symmetry later when we start check the left/right columns
         out_d, out_f = d1, d2
+        a1_sq, a2_sq = a1**2, a2**2
+        b1_sq, b2_sq = b1**2, b2**2
+        c1_sq, c2_sq = c1**2, c2**2
 
-        # Try all the different arraigements of these 4 pairs in a square (excluding any symmetries)
-        for out_a, out_b, out_c, out_i, out_h, out_g in (
-                    (a1, b1, c1, a2, b2, c2),
-                    (a2, b1, c1, a1, b2, c2),
-                    (a1, b2, c1, a2, b1, c2),
-                    (a1, b1, c2, a2, b2, c1),
+        # Try all the different arrangements of these 4 pairs in a square (excluding any symmetries)
+        for (out_a, out_a_sq), (out_b, out_b_sq), (out_c, out_c_sq), (out_i, out_i_sq), (out_h, out_h_sq), (out_g, out_g_sq) in (
+                    ((a1, a1_sq), (b1, b1_sq), (c1, c1_sq), (a2, a2_sq), (b2, b2_sq), (c2, c2_sq)),
+                    ((a2, a2_sq), (b1, b1_sq), (c1, c1_sq), (a1, a1_sq), (b2, b2_sq), (c2, c2_sq)),
+                    ((a1, a1_sq), (b2, b2_sq), (c1, c1_sq), (a2, a2_sq), (b1, b1_sq), (c2, c2_sq)),
+                    ((a1, a1_sq), (b1, b1_sq), (c2, c2_sq), (a2, a2_sq), (b2, b2_sq), (c1, c1_sq)),
                 ):
             # We're going to compute the central value from the top row
-            target_val = out_a**2 + out_b**2 + out_c**2
+            target_val = out_a_sq + out_b_sq + out_c_sq
+            if target_val <= i:
+                continue  # out_e is less than 1 (not valid)
+            if show_puzzles:
+                print(f'{out_a:<16}**2 {out_b:<16}**2 {out_c:<16}**2')
+                print(f'{out_d:<16}**2 0**2 {out_f:<16}**2')
+                print(f'{out_g:<16}**2 {out_h:<16}**2 {out_i:<16}**2')
+                print()
+                show_puzzles = False
+            if out_g_sq + out_h_sq + out_i_sq != target_val:
+                continue
             out_e_sq = target_val - i  # central value, squared
-            if out_e_sq <= 0:
-                continue  # e is less than 1 (not valid)
-            if (out_g**2 + out_h**2 + out_i**2) != target_val:
-                continue  # bottom row mismatch
             out_e = math.isqrt(out_e_sq)
             if out_e**2 != out_e_sq:
                 continue  # e is not a perfect square
