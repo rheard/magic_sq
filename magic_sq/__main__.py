@@ -169,7 +169,10 @@ def main(n=None, start=2, multiprocessing=True, targeted_generation=False):
 
     if multiprocessing:
         with Pool() as tp:
-            for i, ans in enumerate(tp.imap(multithreaded_test, iterator, chunksize=10**4), start=start):
+            for i, ans in enumerate(tp.imap(test if not targeted_generation else multithreaded_test,
+                                            iterator,
+                                            chunksize=10**4),
+                                    start=start):
                 if ans:
                     logger.critical('ANSWER: %s', ans)
                     break
@@ -181,7 +184,7 @@ def main(n=None, start=2, multiprocessing=True, targeted_generation=False):
                     break
     else:
         for i, ans in enumerate(iterator):
-            test(i, limited_checks=True)
+            test(i, limited_checks=not targeted_generation)
 
             if ans:
                 logger.critical('ANSWER: %s', ans)
