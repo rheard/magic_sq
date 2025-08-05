@@ -58,7 +58,7 @@ class GenerateFactorings:
 
         target_key = max(factorings_max)    
         for combo in self._get_numbers({k: v for k, v in factorings_max.items() if k != target_key}):
-            for e in range(0, factorings_max[target_key] + 1, 1 if target_key == 2 or target_key % 4 == 1 else 2):
+            for e in range(0, factorings_max[target_key] + 1, 1):
                 yield combo | {target_key: e}
 
     def get_numbers(self, target_bases, cur_base, cur_i):
