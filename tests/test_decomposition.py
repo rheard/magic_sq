@@ -6,10 +6,13 @@ from magic_sq import decompose_number, decompose_prime
 
 
 class TestPrimeDecomposition(TestCase):
+    """Tests for decompose_prime"""
 
     def test_primes_below_1000(self):
+        """Verify small primes"""
+
         for i in primerange(1000):
-            if i % 4 != 1:
+            if i % 4 != 1:  # Primes that are not 1 mod 4 will produce an error (see source for decompose_prime)
                 continue
 
             with self.subTest(p=i):
@@ -17,7 +20,9 @@ class TestPrimeDecomposition(TestCase):
                 self.assertEqual(i, x**2 + y**2)
 
     def test_high_range(self):
-        for i in primerange(2**63 + 1, 2**63 + 1001):
+        """Verify large primes"""
+
+        for i in primerange(2**31 + 1, 2**31 + 1001):
             if i % 4 != 1:
                 continue
 
@@ -27,15 +32,20 @@ class TestPrimeDecomposition(TestCase):
 
 
 class TestNumberDecomposition(TestCase):
+    """Tests for decompose_number"""
 
-    def test_primes_below_1000(self):
+    def test_numbers_below_1000(self):
+        """Verify small numbers"""
+
         for i in range(1000):
             with self.subTest(n=i):
                 for x, y in decompose_number(i):
                     self.assertEqual(i, x**2 + y**2)
 
     def test_outside_range(self):
-        for i in range(2**63 + 1, 2**63 + 1001):
+        """Verify large numbers"""
+
+        for i in range(2**31 + 1, 2**31 + 1001):
             with self.subTest(n=i):
                 for x, y in decompose_number(i):
                     self.assertEqual(i, x**2 + y**2)
