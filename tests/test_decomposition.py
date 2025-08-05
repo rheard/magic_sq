@@ -19,6 +19,11 @@ class TestPrimeDecomposition(TestCase):
                 x, y = decompose_prime(i)
                 self.assertEqual(i, x**2 + y**2)
 
+    def test_invalid_prime(self):
+        """Verify invalid primes"""
+        with self.assertRaises(ValueError):
+            decompose_prime(11)
+
     def test_high_range(self):
         """Verify large primes"""
 
