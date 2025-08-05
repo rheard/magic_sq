@@ -64,7 +64,7 @@ def decompose_number(n, check_count=None, limited_checks=False):
             or false positive will appear.
 
     Returns:
-        list<tuple<int, int)>>: All unique solutions (x, y)
+        list<tuple<int, int>>: All unique solutions (x, y)
     """
 
     # Step 1: Factor n. This is the most time consuming step, especially on larger numbers. Avoid if possible
