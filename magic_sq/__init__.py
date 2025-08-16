@@ -154,8 +154,9 @@ def test(i, show_puzzles=False, limited_checks=False):
         i = math.prod(k**v for k, v in i.items())
 
     for (a1, a2), (b1, b2), (c1, c2), (d1, d2) in combinations(solutions, 4):
-        # FOR NOW I'm going to act as if the center was symmetrical.
-        #   We can check more symmetry later when we start check the left/right columns
+        # TODO: Based on the parameterization of magic squares, I believe we only need to sort these pairs by size
+        #   and then fit them to the parameterization based on size of the parameters.
+        #   I haven't fully convinced myself thats something I can do tho...
         out_d, out_f = d1, d2
         a1_sq, a2_sq = a1**2, a2**2
         b1_sq, b2_sq = b1**2, b2**2
