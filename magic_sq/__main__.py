@@ -81,6 +81,7 @@ def main(n=None, start=2, multiprocessing=True, targeted_generation=False):
     if targeted_generation:
         iterator = GenerateFactoringsMgSqSq()
         log_step = 10**2
+        test_method = multithreaded_test
     else:
         # Note that any number we use must be even.
         #   This comes from the parameterization of the problem given by Edouard Lucas:
@@ -113,10 +114,11 @@ def main(n=None, start=2, multiprocessing=True, targeted_generation=False):
 
         iterator = count(start, 4) if n is None else range(start, n, 4)
         log_step = 10**5
+        test_method = test
 
     if multiprocessing:
         with Pool() as tp:
-            for i, ans in enumerate(tp.imap(test if not targeted_generation else multithreaded_test,
+            for i, ans in enumerate(tp.imap(test_method,
                                             iterator,
                                             chunksize=10**4),
                                     start=start):
@@ -131,7 +133,7 @@ def main(n=None, start=2, multiprocessing=True, targeted_generation=False):
                     break
     else:
         for i, ans in enumerate(iterator):
-            test(i, limited_checks=not targeted_generation)
+            test_method(i)
 
             if ans:
                 logger.critical('ANSWER: %s', ans)
