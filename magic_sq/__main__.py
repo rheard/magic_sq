@@ -10,91 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 try:
-    from . import test
-    from .generate_factors import GenerateFactorings
+    from . import test, GenerateFactoringsMgSqSq
 except ImportError:
-    from magic_sq import test
-    from magic_sq.generate_factors import GenerateFactorings
-
-
-class GenerateFactoringsMgSqSq(GenerateFactorings):
-    """
-    A modified version of GenerateFactorings.
-        Skips all factorings that will not lead to at least 4 x**2+y**2 combinations,
-        and are not relevant to the problem.
-    """
-
-    def __init__(self):
-        super().__init__()
-
-        self.two_max = 2
-        self.P = dict()
-        self.Q = dict()
-
-    def next(self):
-        base, i, val = super().next()
-
-        if base == 2:
-            self.two_max = i
-            t = '2'
-        elif base % 4 == 1:
-            self.P[base] = i
-            t = 'P'
-        else:
-            self.Q[base] = i
-            t = 'Q'
-
-        return base, i, val, t
-
-    def _get_numbers(self, two_max, p_factorings_max, q_factorings_max):
-
-        if two_max:
-            target_key = 2
-            target_key_max = two_max
-            for combo in self._get_numbers(0, p_factorings_max, q_factorings_max):
-                for e in range(0, target_key_max + 1):
-                    yield combo | {target_key: e}
-
-        elif p_factorings_max:
-            target_key = max(p_factorings_max)
-            target_key_max = p_factorings_max[target_key]
-            p_factorings_max = {k: v for k, v in p_factorings_max.items() if k != target_key}
-
-            for combo in self._get_numbers(two_max, p_factorings_max, q_factorings_max):
-                for e in range(0, target_key_max + 1):
-                    yield combo | {target_key: e}
-
-        elif q_factorings_max:
-            target_key = max(q_factorings_max)
-            target_key_max = q_factorings_max[target_key]
-            q_factorings_max = {k: v for k, v in q_factorings_max.items() if k != target_key}
-
-            for combo in self._get_numbers(two_max, p_factorings_max, q_factorings_max):
-                for e in range(0, target_key_max + 1, 2):
-                    yield combo | {target_key: e}
-
-        else:
-            yield dict()
-            return
-
-    def get_numbers(self, target_P, target_Q, cur_base, cur_i):
-        # We have the value for our current base, so that is not needed
-        for combo in self._get_numbers(self.two_max if cur_base != 2 else 0, target_P, target_Q):
-            yield combo | {cur_base: cur_i}
-
-    def get_factorings(self):
-        while True:
-            cur_base, cur_i, cur_val, t = self.next()
-
-            if t == 'Q' and cur_i % 2 == 1:
-                continue
-
-            target_P = self.P if t != 'P' else {k: v for k, v in self.P.items() if k != cur_base}
-            target_Q = self.Q if t != 'Q' else {k: v for k, v in self.Q.items() if k != cur_base}
-            for combo in self.get_numbers(target_P, target_Q, cur_base, cur_i):
-                combo = {k: v for k, v in combo.items() if v != 0}
-                if combo:
-                    yield combo
+    from magic_sq import test, GenerateFactoringsMgSqSq
 
 
 def multithreaded_test(i):
