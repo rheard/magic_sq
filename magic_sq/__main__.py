@@ -23,6 +23,8 @@ class GenerateFactoringsMgSqSq(GenerateFactorings):
         Skips all factorings that will not lead to at least 4 x**2+y**2 combinations,
         and are not relevant to the problem.
     """
+    # TODO: Update this
+    #   Any output must have a minimum 2's exponent of 2
 
     def __init__(self):
         super().__init__()
@@ -164,7 +166,36 @@ def main(n=None, start=2, multiprocessing=True, targeted_generation=False):
         iterator = GenerateFactoringsMgSqSq()
         log_step = 10**2
     else:
-        iterator = count(start) if n is None else range(start, n)
+        # Note that any number we use must be even.
+        #   This comes from the parameterization of the problem given by Edouard Lucas:
+        #       a**2 = z - y
+        #       b**2 = z + (x + y)
+        #       c**2 = z - x
+        #       d**2 = z - (x - y)
+        #       e**2 = z
+        #       f**2 = z + (x - y)
+        #       g**2 = z + x
+        #       h**2 = z - (x + y)
+        #       i**2 = z + y
+        #
+        #   Noting that we're searching for combos that look like n = p**2 + q**2,
+        #           lets solve for the combinations we're looking for:
+        #       n = z - y + z + y
+        #       n = z + (x + y) + z - (x + y)
+        #       n = z - x + z + x
+        #       n = z - (x - y) + z + (x - y)
+        #
+        #   Solving for all of these produces the same result: n = 2*z
+        #       Thus, any number where this works must be even.
+        #   Further, we are given the information that z must be a square number (e**2 = z)
+        #       Thus, any number where this works must be a factor of 4.
+
+        # Get the first factor of 4 past start:
+        start_mod = start % 4
+        if start_mod:
+            start += 4 - start_mod
+
+        iterator = count(start, 4) if n is None else range(start, n, 4)
         log_step = 10**5
 
     if multiprocessing:
