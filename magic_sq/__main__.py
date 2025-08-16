@@ -23,13 +23,11 @@ class GenerateFactoringsMgSqSq(GenerateFactorings):
         Skips all factorings that will not lead to at least 4 x**2+y**2 combinations,
         and are not relevant to the problem.
     """
-    # TODO: Update this
-    #   Any output must have a minimum 2's exponent of 2
 
     def __init__(self):
         super().__init__()
 
-        self.two_max = 1
+        self.two_max = 2
         self.P = dict()
         self.Q = dict()
 
