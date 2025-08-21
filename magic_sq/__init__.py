@@ -91,17 +91,22 @@ class GenerateFactoringsMgSqSq(GenerateFactorings):
 
 def test(i, show_puzzles=False, limited_checks=False):
     """Test all values of a**2 + b**2 = i"""
-    solutions = decompose_number(i, 4, limited_checks)
+    solutions = decompose_number(i, 4, limited_checks=limited_checks)
 
     if isinstance(i, dict) and solutions:
         i = math.prod(k**v for k, v in i.items())
+
+    solutions = [
+        s for s in solutions
+        if sol[0] != sol[1]  # Skip symmetrical solutions with repeat numbers (a**2 + a**2)
+        and all(x != 0 for x in sol)  # Skip solutions containing 0
+    ]
 
     for (a1, a2), (b1, b2), (c1, c2), (d1, d2) in combinations(solutions, 4):
         # TODO: Based on the parameterization of magic squares, I believe we only need to sort these pairs by size
         #   and then fit them to the parameterization based on size of the parameters.
         #   I haven't fully convinced myself thats something I can do tho...
         out_d, out_f = d1, d2
-        out_f_sq = out_f**2
         a1_sq, a2_sq = a1**2, a2**2
         b1_sq, b2_sq = b1**2, b2**2
         c1_sq, c2_sq = c1**2, c2**2
@@ -113,12 +118,11 @@ def test(i, show_puzzles=False, limited_checks=False):
                     ((a1, a1_sq), (b2, b2_sq), (c1, c1_sq), (a2, a2_sq), (b1, b1_sq), (c2, c2_sq)),
                     ((a1, a1_sq), (b1, b1_sq), (c2, c2_sq), (a2, a2_sq), (b2, b2_sq), (c1, c1_sq)),
                 ):
-            target_val = out_a_sq + out_b**2 + out_c_sq
+            target_val = out_a_sq + out_b_sq + out_c_sq
             if target_val <= i:
                 continue  # out_e is less than 1 (not valid)
-            out_i_sq = out_i**2
-            if out_c_sq + out_f_sq + out_i_sq != target_val:
-                continue  # right column doesn't equal top row
+            if out_g_sq + out_h_sq + out_i_sq != target_val:
+                continue  # Bottom row doesn't equal top row
 
             # Nothing past here runs:
             if show_puzzles:
@@ -134,11 +138,6 @@ def test(i, show_puzzles=False, limited_checks=False):
                 continue  # e is not a perfect square
             # endregion
 
-            out_g_sq = out_g**2
-            if out_g_sq + out_h_sq + out_i_sq != target_val:
-                continue  # Bottom row doesn't equal top row
-            if out_a_sq + out_d**2 + out_g_sq != target_val:
-                continue  # left column doesn't equal top row
             # TODO: Check diagonols too
             ans = f'{out_a:<16}**2 {out_b:<16}**2 {out_c:<16}**2\n' \
                   f'{out_d:<16}**2 {out_e:<16}**2 {out_f:<16}**2\n' \
@@ -151,3 +150,8 @@ def test(i, show_puzzles=False, limited_checks=False):
                 wb.write('\n')
             return ans
     return None
+
+
+def multithreaded_test(i):
+    """Wrapper for ThreadPool"""
+    return test(i, limited_checks=True)

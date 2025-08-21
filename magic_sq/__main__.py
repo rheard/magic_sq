@@ -10,14 +10,9 @@ logger = logging.getLogger(__name__)
 
 
 try:
-    from . import test, GenerateFactoringsMgSqSq
+    from . import test, multithreaded_test, GenerateFactoringsMgSqSq
 except ImportError:
-    from magic_sq import test, GenerateFactoringsMgSqSq
-
-
-def multithreaded_test(i):
-    """Wrapper for ThreadPool"""
-    return test(i, limited_checks=True)
+    from magic_sq import test, multithreaded_test, GenerateFactoringsMgSqSq
 
 
 def main(n=None, start=2, multiprocessing=True, targeted_generation=False):
@@ -81,6 +76,7 @@ def main(n=None, start=2, multiprocessing=True, targeted_generation=False):
     if targeted_generation:
         iterator = GenerateFactoringsMgSqSq()
         log_step = 10**2
+        chunk_size = 10**2
         test_method = multithreaded_test
     else:
         # Note that any number we use must be even.
@@ -114,13 +110,12 @@ def main(n=None, start=2, multiprocessing=True, targeted_generation=False):
 
         iterator = count(start, 4) if n is None else range(start, n, 4)
         log_step = 10**5
+        chunk_size = 10**4
         test_method = test
 
     if multiprocessing:
         with Pool() as tp:
-            for i, ans in enumerate(tp.imap(test_method,
-                                            iterator,
-                                            chunksize=10**4),
+            for i, ans in enumerate(tp.imap(test_method, iterator, chunksize=chunk_size),
                                     start=start):
                 if ans:
                     logger.critical('ANSWER: %s', ans)
@@ -132,8 +127,8 @@ def main(n=None, start=2, multiprocessing=True, targeted_generation=False):
                 if targeted_generation and n and i == n:
                     break
     else:
-        for i, ans in enumerate(iterator):
-            test_method(i)
+        for i, f in enumerate(iterator):
+            ans = test_method(f)
 
             if ans:
                 logger.critical('ANSWER: %s', ans)
