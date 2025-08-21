@@ -98,8 +98,8 @@ def test(i, show_puzzles=False, limited_checks=False):
 
     solutions = [
         s for s in solutions
-        if sol[0] != sol[1]  # Skip symmetrical solutions with repeat numbers (a**2 + a**2)
-        and all(x != 0 for x in sol)  # Skip solutions containing 0
+        if s[0] != s[1]  # Skip symmetrical solutions with repeat numbers (a**2 + a**2)
+        and all(x != 0 for x in s)  # Skip solutions containing 0
     ]
 
     for (a1, a2), (b1, b2), (c1, c2), (d1, d2) in combinations(solutions, 4):
